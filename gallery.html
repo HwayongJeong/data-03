@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>갤러리 | 숲으로 캠핑클럽</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="brand">🌲 숲으로 <span class="tag">Camping Club</span></a>
+    <nav class="nav">
+      <a href="index.html">홈</a>
+      <a href="notice.html">공지사항</a>
+      <a href="board.html">자유게시판</a>
+      <a href="regular.html">정기모임</a>
+      <a href="small.html">소모임</a>
+      <a href="gallery.html" class="active">갤러리</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴">☰</button>
+  </div>
+</header>
+
+<div class="page-head">
+  <div class="container">
+    <h1>📷 갤러리</h1>
+    <p>회원들이 남긴 캠핑의 순간들을 모았습니다.</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="board-toolbar">
+    <p style="color:var(--ink-soft); font-size:14px; margin:0;">총 <b id="count">0</b>장의 사진</p>
+    <button class="btn btn-primary" id="btnNew">📸 사진 등록</button>
+  </div>
+  <div id="grid" class="grid grid-3">
+    <div class="loading">불러오는 중...</div>
+  </div>
+</div>
+
+<!-- 등록/수정 모달 -->
+<div class="modal-backdrop" id="formModal">
+  <div class="modal">
+    <h3 id="formModalTitle">사진 등록</h3>
+    <input type="hidden" id="g-id" />
+    <div class="field"><label>이미지 URL</label><input type="text" id="g-url" placeholder="https://..." /></div>
+    <div class="field"><label>제목</label><input type="text" id="g-title" placeholder="사진 제목" /></div>
+    <div class="field"><label>작성자</label><input type="text" id="g-author" placeholder="익명" /></div>
+    <div class="field"><label>설명</label><textarea id="g-desc" placeholder="사진에 대한 설명을 남겨주세요" style="min-height:80px;"></textarea></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" id="btnCancelForm">취소</button>
+      <button class="btn btn-primary" id="btnSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal">
+    <h3>사진을 삭제할까요?</h3>
+    <p class="sub">삭제한 사진은 되돌릴 수 없습니다.</p>
+    <div class="form-actions">
+      <button class="btn btn-ghost" id="btnCancelDelete">취소</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">삭제</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>
+      <div class="brand">🌲 숲으로 캠핑클럽</div>
+      <small>연 4회 정기모임 · 매달 지역별 소모임 · 함께 떠나는 캠핑</small>
+    </div>
+    <div class="foot-links">
+      <a href="notice.html">공지사항</a>
+      <a href="board.html">자유게시판</a>
+      <a href="regular.html">정기모임</a>
+      <a href="small.html">소모임</a>
+      <a href="gallery.html">갤러리</a>
+    </div>
+  </div>
+</footer>
+
+<script type="module">
+import { supabase, TABLES, formatDate, escapeHtml, toast, initNavToggle } from "./js/supabase-client.js";
+initNavToggle();
+
+const TABLE = TABLES.gallery;
+let deleteId = null;
+
+async function loadGrid() {
+  const el = document.getElementById("grid");
+  el.innerHTML = `<div class="loading">불러오는 중...</div>`;
+  const { data, error } = await supabase.from(TABLE).select("*").order("created_at", { ascending: false });
+  if (error) { el.innerHTML = `<div class="empty">불러오기 실패: ${escapeHtml(error.message)}</div>`; return; }
+  document.getElementById("count").textContent = data.length;
+  if (!data.length) { el.innerHTML = `<div class="empty">등록된 사진이 없습니다. 첫 사진을 올려보세요!</div>`; return; }
+  el.innerHTML = data.map(g => `
+    <div class="gallery-item">
+      <img src="${escapeHtml(g.image_url)}" alt="${escapeHtml(g.title)}" loading="lazy" />
+      <div class="pad">
+        <h3 style="font-size:16px; margin:0 0 4px;">${escapeHtml(g.title)}</h3>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 10px;">${escapeHtml(g.description || "")}</p>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="meta" style="font-size:12px;">${escapeHtml(g.author)} · ${formatDate(g.created_at)}</span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-ghost btn-sm" data-edit="${g.id}">수정</button>
+            <button class="btn btn-danger btn-sm" data-del="${g.id}">삭제</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+  el.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => openForm(data.find(g => g.id === Number(b.dataset.edit)))));
+  el.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+    deleteId = Number(b.dataset.del);
+    document.getElementById("deleteModal").classList.add("open");
+  }));
+}
+
+function openForm(record = null) {
+  document.getElementById("formModalTitle").textContent = record ? "사진 수정" : "사진 등록";
+  document.getElementById("g-id").value = record ? record.id : "";
+  document.getElementById("g-url").value = record ? record.image_url : "";
+  document.getElementById("g-title").value = record ? record.title : "";
+  document.getElementById("g-author").value = record ? record.author : "";
+  document.getElementById("g-desc").value = record ? (record.description || "") : "";
+  document.getElementById("formModal").classList.add("open");
+}
+document.getElementById("btnNew").addEventListener("click", () => openForm());
+document.getElementById("btnCancelForm").addEventListener("click", () => document.getElementById("formModal").classList.remove("open"));
+
+document.getElementById("btnSave").addEventListener("click", async () => {
+  const id = document.getElementById("g-id").value;
+  const image_url = document.getElementById("g-url").value.trim();
+  const title = document.getElementById("g-title").value.trim();
+  const author = document.getElementById("g-author").value.trim() || "익명";
+  const description = document.getElementById("g-desc").value.trim();
+  if (!image_url || !title) { toast("이미지 URL과 제목을 입력해주세요."); return; }
+
+  if (id) {
+    const { error } = await supabase.from(TABLE).update({ image_url, title, author, description }).eq("id", id);
+    if (error) { toast("수정 실패: " + error.message); return; }
+    toast("수정되었습니다.");
+  } else {
+    const { error } = await supabase.from(TABLE).insert({ image_url, title, author, description });
+    if (error) { toast("등록 실패: " + error.message); return; }
+    toast("등록되었습니다.");
+  }
+  document.getElementById("formModal").classList.remove("open");
+  loadGrid();
+});
+
+document.getElementById("btnCancelDelete").addEventListener("click", () => document.getElementById("deleteModal").classList.remove("open"));
+document.getElementById("btnConfirmDelete").addEventListener("click", async () => {
+  const { error } = await supabase.from(TABLE).delete().eq("id", deleteId);
+  document.getElementById("deleteModal").classList.remove("open");
+  if (error) { toast("삭제 실패: " + error.message); return; }
+  toast("삭제되었습니다.");
+  loadGrid();
+});
+
+loadGrid();
+</script>
+</body>
+</html>

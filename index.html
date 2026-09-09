@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>숲으로 캠핑클럽 | 함께 떠나는 캠핑 동호회</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="brand">🌲 숲으로 <span class="tag">Camping Club</span></a>
+    <nav class="nav">
+      <a href="index.html" class="active">홈</a>
+      <a href="notice.html">공지사항</a>
+      <a href="board.html">자유게시판</a>
+      <a href="regular.html">정기모임</a>
+      <a href="small.html">소모임</a>
+      <a href="gallery.html">갤러리</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴">☰</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-emojis">🏕️ ⛺ 🌲 🔥 🎒</div>
+    <p class="eyebrow" style="color:#BEE7D0;">숲으로 캠핑클럽</p>
+    <h1>도시를 떠나, 숲과 별 아래서<br/>함께 캠핑하는 사람들</h1>
+    <p>연 4회 전국 정기모임과 매달 열리는 지역별 소모임으로, 캠핑을 사랑하는 사람들이 지역을 넘어 함께 텐트를 칩니다.</p>
+    <div class="hero-actions">
+      <a href="regular.html" class="btn btn-primary">정기모임 신청하기</a>
+      <a href="small.html" class="btn btn-outline">지역 소모임 보기</a>
+    </div>
+    <div class="hero-stats">
+      <div><b>연 4회</b><span>전국 정기모임</span></div>
+      <div><b>매달</b><span>지역별 소모임</span></div>
+      <div><b>7개+</b><span>활동 지역</span></div>
+    </div>
+  </div>
+  <div class="canopy"></div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">동호회 소개</p>
+        <h2>지역을 넘어, 캠핑으로 연결됩니다</h2>
+      </div>
+    </div>
+    <div class="grid grid-3">
+      <div class="card">
+        <h3>🏕️ 전국 정기모임</h3>
+        <p>봄·여름·가을·겨울, 연 4회 전국 회원이 한자리에 모이는 대규모 정기모임을 엽니다.</p>
+      </div>
+      <div class="card">
+        <h3>⛺ 지역별 소모임</h3>
+        <p>매달 서울/경기, 강원, 영남 등 지역별로 소규모 캠핑 모임을 열어 부담 없이 참여할 수 있습니다.</p>
+      </div>
+      <div class="card">
+        <h3>🔥 자유로운 소통</h3>
+        <p>공지사항과 자유게시판에서 캠핑 정보, 장비 후기, 모임 후기를 자유롭게 나눠요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--leaf-pale); padding-top:56px; padding-bottom:56px;">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">모임 일정</p>
+        <h2>다가오는 모임</h2>
+      </div>
+      <a href="regular.html" class="btn btn-ghost btn-sm">전체 일정 보기</a>
+    </div>
+    <div id="upcoming" class="grid grid-3">
+      <div class="loading">모임 일정을 불러오는 중...</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">공지사항</p>
+        <h2>새 소식</h2>
+      </div>
+      <a href="notice.html" class="btn btn-ghost btn-sm">전체 공지 보기</a>
+    </div>
+    <div id="notices" class="list">
+      <div class="loading">공지사항을 불러오는 중...</div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>
+      <div class="brand">🌲 숲으로 캠핑클럽</div>
+      <small>연 4회 정기모임 · 매달 지역별 소모임 · 함께 떠나는 캠핑</small>
+    </div>
+    <div class="foot-links">
+      <a href="notice.html">공지사항</a>
+      <a href="board.html">자유게시판</a>
+      <a href="regular.html">정기모임</a>
+      <a href="small.html">소모임</a>
+      <a href="gallery.html">갤러리</a>
+    </div>
+  </div>
+</footer>
+
+<script type="module">
+import { supabase, TABLES, formatDate, escapeHtml, initNavToggle } from "./js/supabase-client.js";
+initNavToggle();
+
+async function loadUpcoming() {
+  const today = new Date().toISOString().slice(0,10);
+  const { data: regular } = await supabase.from(TABLES.regularMeetups).select("*").gte("meetup_date", today).order("meetup_date", { ascending: true }).limit(2);
+  const { data: small } = await supabase.from(TABLES.smallMeetups).select("*").gte("meetup_date", today).order("meetup_date", { ascending: true }).limit(1);
+
+  const items = [
+    ...(regular || []).map(m => ({ ...m, type: "정기모임", href: "regular.html" })),
+    ...(small || []).map(m => ({ ...m, type: "소모임", href: "small.html" })),
+  ];
+
+  const el = document.getElementById("upcoming");
+  if (!items.length) { el.innerHTML = `<div class="empty">예정된 모임이 없습니다.</div>`; return; }
+  el.innerHTML = items.map(m => `
+    <a href="${m.href}" class="card" style="display:block;">
+      <span class="badge ${m.type === '정기모임' ? '' : 'leaf'}">${m.type}</span>
+      <span class="badge leaf">${escapeHtml(m.region)}</span>
+      <h3 style="margin-top:10px;">${escapeHtml(m.title)}</h3>
+      <p class="meta">${m.meetup_date} · ${escapeHtml(m.location || "")}</p>
+    </a>
+  `).join("");
+}
+
+async function loadNotices() {
+  const { data, error } = await supabase.from(TABLES.notices).select("*").order("created_at", { ascending: false }).limit(4);
+  const el = document.getElementById("notices");
+  if (error) { el.innerHTML = `<div class="empty">공지사항을 불러오지 못했습니다.</div>`; return; }
+  if (!data.length) { el.innerHTML = `<div class="empty">등록된 공지사항이 없습니다.</div>`; return; }
+  el.innerHTML = data.map((n, i) => `
+    <a href="notice.html?id=${n.id}" class="list-row">
+      <span class="num">${i + 1}</span>
+      <span class="title">📌 ${escapeHtml(n.title)}</span>
+      <span class="author">${escapeHtml(n.author)}</span>
+      <span class="date">${formatDate(n.created_at)}</span>
+    </a>
+  `).join("");
+}
+
+loadUpcoming();
+loadNotices();
+</script>
+</body>
+</html>
